@@ -1,3 +1,15 @@
+---
+title: Government Fraud Detection
+emoji: 🕵️‍♀️
+colorFrom: blue
+colorTo: red
+sdk: docker
+app_port: 7860
+pinned: false
+tags:
+- openenv
+---
+
 # Government Fraud Detection — OpenEnv
 
 An AI agent training environment that simulates real-world government fraud investigation workflows. Agents read messy government documents, trace financial relationships, and submit structured fraud findings — scored deterministically against ground truth.
