@@ -34,7 +34,7 @@ COPY README.md .
 # Copy the built frontend into the backend's static directory
 COPY --from=frontend-builder /app/frontend/out ./backend/static
 
-WORKDIR /app/backend
+WORKDIR /app
 
 # Expose port (HF Spaces uses 7860)
 EXPOSE 7860
@@ -45,4 +45,4 @@ ENV PYTHONUNBUFFERED=1
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:7860/health || exit 1
 
-CMD ["python", "app.py"]
+CMD ["python", "-m", "backend.app"]

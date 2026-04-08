@@ -11,8 +11,11 @@ from typing import Any, Dict, Optional
 import sys
 from pathlib import Path
 
-# Ensure the 'backend' folder is in sys.path for robust imports regardless of CWD
+# Ensure the parent directory is in sys.path so 'backend' is recognized as a package
 current_dir = Path(__file__).parent.resolve()
+parent_dir = current_dir.parent.resolve()
+if str(parent_dir) not in sys.path:
+    sys.path.append(str(parent_dir))
 if str(current_dir) not in sys.path:
     sys.path.append(str(current_dir))
 
