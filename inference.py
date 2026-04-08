@@ -23,6 +23,7 @@ import sys
 import time
 from typing import Any, Dict, List, Optional
 
+import httpx
 from openai import OpenAI
 
 # ---------------------------------------------------------------------------
@@ -169,6 +170,87 @@ def parse_action(raw: str) -> Optional[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Environment interaction (via HTTP to local server, or direct import)
 # ---------------------------------------------------------------------------
+
+def run_episode_remote(task_id: str, client: OpenAI, env_url: str) -> Dict[str, Any]:
+    """
+    Run one episode against a remote OpenEnv REST API.
+    """
+    env_url = env_url.rstrip("/")
+    session_id = f"test_{int(time.time())}"
+
+    # Reset
+    try:
+        resp = httpx.post(f"{env_url}/reset", json={"task_id": task_id, "session_id": session_id}, timeout=30.0)
+        resp.raise_for_status()
+        obs_dict = resp.json()
+    except Exception as e:
+        print(f"FAILED TO CONNECT TO ENV at {env_url}: {e}")
+        return {"task": task_id, "success": False, "score": 0.0, "steps": 0}
+
+    from models import Observation
+    obs = Observation(**obs_dict)
+
+    rewards: List[float] = []
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    step_num = 0
+    done = False
+    final_score = 0.0
+
+    log_start(task_id, MODEL_NAME)
+
+    while not done and step_num < MAX_STEPS:
+        obs_summary = _build_obs_summary(obs)
+        messages.append({"role": "user", "content": obs_summary})
+
+        try:
+            raw_response = call_llm(client, messages)
+        except Exception as e:
+            log_step(step_num + 1, "llm_error", 0.0, True, str(e))
+            log_end(False, step_num, rewards)
+            return {"task": task_id, "success": False, "score": 0.0, "steps": step_num}
+
+        messages.append({"role": "assistant", "content": raw_response})
+        action_dict = parse_action(raw_response)
+        
+        if action_dict is None:
+            log_step(step_num + 1, "invalid_json", 0.0, False, "Could not parse JSON action")
+            rewards.append(0.0)
+            step_num += 1
+            messages.append({"role": "user", "content": "ERROR: Your response was not valid JSON."})
+            continue
+
+        # Step
+        try:
+            resp = httpx.post(f"{env_url}/step", json={"action": action_dict, "session_id": session_id}, timeout=30.0)
+            resp.raise_for_status()
+            step_data = resp.json()
+            obs_dict = step_data["observation"]
+            reward = step_data["reward"]
+            done = step_data["done"]
+            info = step_data["info"]
+            obs = Observation(**obs_dict)
+        except Exception as e:
+            log_step(step_num + 1, "network_error", 0.0, True, str(e))
+            log_end(False, step_num, rewards)
+            return {"task": task_id, "success": False, "score": 0.0, "steps": step_num}
+
+        error_msg = obs.last_action_error
+        rewards.append(reward)
+        step_num += 1
+
+        action_str = action_dict.get("action_type", "unknown")
+        log_step(step_num, action_str, reward, done, error_msg)
+
+        if info.get("final_score") is not None:
+            final_score = info["final_score"]
+
+    success = final_score >= SUCCESS_THRESHOLD
+    log_end(success, step_num, rewards)
+
+    return {
+        "task": task_id, "success": success, "score": final_score, "steps": step_num
+    }
+
 
 def run_episode_direct(task_id: str, client: OpenAI, dynamic_data: bool = False) -> Dict[str, Any]:
     """
@@ -357,6 +439,10 @@ def main():
         help="Which task(s) to run",
     )
     parser.add_argument(
+        "--env-url", "--api-url",
+        help="URL of the remote OpenEnv environment API (e.g. your HF Space URL)",
+    )
+    parser.add_argument(
         "--dynamic-data",
         action="store_true",
         help="Run against dynamic per-episode datasets",
@@ -371,7 +457,12 @@ def main():
         print(f"\n{'='*60}", flush=True)
         print(f"Running task: {task_id}", flush=True)
         print(f"{'='*60}", flush=True)
-        result = run_episode_direct(task_id, client, dynamic_data=args.dynamic_data)
+
+        if args.env_url:
+            result = run_episode_remote(task_id, client, env_url=args.env_url)
+        else:
+            result = run_episode_direct(task_id, client, dynamic_data=args.dynamic_data)
+        
         all_results.append(result)
         time.sleep(1)  # Brief pause between tasks
 
