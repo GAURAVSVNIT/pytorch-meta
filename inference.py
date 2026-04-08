@@ -187,7 +187,7 @@ def run_episode_remote(task_id: str, client: OpenAI, env_url: str) -> Dict[str, 
         print(f"FAILED TO CONNECT TO ENV at {env_url}: {e}")
         return {"task": task_id, "success": False, "score": 0.0, "steps": 0}
 
-    from models import Observation
+    from backend.models import Observation
     obs = Observation(**obs_dict)
 
     rewards: List[float] = []
@@ -257,8 +257,8 @@ def run_episode_direct(task_id: str, client: OpenAI, dynamic_data: bool = False)
     Run one episode directly importing the environment (no HTTP server needed).
     This is the primary mode for the baseline script.
     """
-    from environment import GovFraudEnv
-    from models import Action
+    from backend.environment import GovFraudEnv
+    from backend.models import Action
 
     env = GovFraudEnv(task_id=task_id, dynamic_data=dynamic_data)
     obs = env.reset()
