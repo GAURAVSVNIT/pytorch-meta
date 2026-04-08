@@ -10,14 +10,14 @@ import json
 import random
 from typing import Any, Dict, List, Optional, Tuple
 
-from models import Action, Observation, Reward, DocumentSummary, FraudSignal
-from data.documents import (
+from backend.models import Action, Observation, Reward, DocumentSummary, FraudSignal
+from backend.data.documents import (
     TASK1_DOCUMENTS,
     TASK2_DOCUMENTS,
     TASK3_DOCUMENTS,
 )
-from data.dynamic_dataset import generate_dynamic_documents
-from tasks.graders import (
+from backend.data.dynamic_dataset import generate_dynamic_documents
+from backend.tasks.graders import (
     TASKS,
     grade_task1,
     grade_task2,

@@ -4,8 +4,8 @@ Task definitions and deterministic graders for all 3 fraud detection tasks.
 from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional, Tuple
-from models import Reward
-from data.documents import (
+from backend.models import Reward
+from backend.data.documents import (
     TASK1_DOCUMENTS, TASK2_DOCUMENTS, TASK3_DOCUMENTS,
     TASK1_GROUND_TRUTH, TASK2_GROUND_TRUTH, TASK3_GROUND_TRUTH,
 )

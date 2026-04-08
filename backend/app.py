@@ -23,8 +23,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from models import Action, Observation, Reward
-from environment import GovFraudEnv
+from backend.models import Action, Observation, Reward
+from backend.environment import GovFraudEnv
 
 app = FastAPI(
     title="Government Fraud Detection — OpenEnv",
@@ -89,7 +89,7 @@ def health():
 @app.get("/tasks")
 def list_tasks():
     """List all available tasks with metadata."""
-    from tasks.graders import TASKS
+    from backend.tasks.graders import TASKS
     return {
         task_id: {
             "difficulty": meta["difficulty"],
