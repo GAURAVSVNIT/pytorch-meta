@@ -238,7 +238,7 @@ def run_episode_remote(task_id: str, client: OpenAI, env_url: str) -> Dict[str, 
         rewards.append(reward)
         step_num += 1
 
-        action_str = action_dict.get("action_type", "unknown")
+        action_str = _action_to_str_from_dict(action_dict)
         log_step(step_num, action_str, reward, done, error_msg)
 
         if info.get("final_score") is not None:
@@ -404,6 +404,17 @@ def _action_to_str(action) -> str:
         parts.append(",".join(action.entity_ids[:2]))
     if action.finding_type:
         parts.append(action.finding_type)
+    return "(" + "|".join(parts) + ")"
+
+
+def _action_to_str_from_dict(action_dict: Dict[str, Any]) -> str:
+    parts = [action_dict.get("action_type", "unknown")]
+    if action_dict.get("document_id"):
+        parts.append(action_dict["document_id"])
+    if action_dict.get("entity_ids"):
+        parts.append(",".join(action_dict["entity_ids"][:2]))
+    if action_dict.get("finding_type"):
+        parts.append(action_dict["finding_type"])
     return "(" + "|".join(parts) + ")"
 
 
