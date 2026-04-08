@@ -8,10 +8,19 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, Optional
 
+import sys
+from pathlib import Path
+
+# Ensure the 'backend' folder is in sys.path for robust imports regardless of CWD
+current_dir = Path(__file__).parent.resolve()
+if str(current_dir) not in sys.path:
+    sys.path.append(str(current_dir))
+
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from models import Action, Observation, Reward
@@ -152,6 +161,20 @@ def validate(dynamic_data: bool = False):
         results[task_id] = {"status": "pass", "initial_docs": len(obs.available_documents)}
     return {"validation": "passed", "tasks": results}
 
+
+# Serve static files from the 'static' directory if it exists
+static_path = current_dir / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
+    @app.get("/{full_path:path}")
+    async def serve_dashboard(full_path: str):
+        # If the request matches a file, StaticFiles handles it (via /static)
+        # Otherwise, serve index.html for SPA routing
+        index_file = static_path / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        return {"detail": "Investigator Dashboard static files not found. Run 'npm run build' in frontend/ first."}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
