@@ -118,10 +118,10 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     )
 
 
-def log_end(success: bool, steps: int, rewards: List[float]) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     success_str = "true" if success else "false"
-    print(f"[END] success={success_str} steps={steps} rewards={rewards_str}", flush=True)
+    print(f"[END] success={success_str} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -206,7 +206,7 @@ def run_episode_remote(task_id: str, client: OpenAI, env_url: str) -> Dict[str, 
             raw_response = call_llm(client, messages)
         except Exception as e:
             log_step(step_num + 1, "llm_error", 0.0, True, str(e))
-            log_end(False, step_num, rewards)
+            log_end(False, step_num, 0.0, rewards)
             return {"task": task_id, "success": False, "score": 0.0, "steps": step_num}
 
         messages.append({"role": "assistant", "content": raw_response})
@@ -231,7 +231,7 @@ def run_episode_remote(task_id: str, client: OpenAI, env_url: str) -> Dict[str, 
             obs = Observation(**obs_dict)
         except Exception as e:
             log_step(step_num + 1, "network_error", 0.0, True, str(e))
-            log_end(False, step_num, rewards)
+            log_end(False, step_num, 0.0, rewards)
             return {"task": task_id, "success": False, "score": 0.0, "steps": step_num}
 
         error_msg = obs.last_action_error
@@ -245,7 +245,7 @@ def run_episode_remote(task_id: str, client: OpenAI, env_url: str) -> Dict[str, 
             final_score = info["final_score"]
 
     success = final_score >= SUCCESS_THRESHOLD
-    log_end(success, step_num, rewards)
+    log_end(success, step_num, final_score, rewards)
 
     return {
         "task": task_id, "success": success, "score": final_score, "steps": step_num
@@ -281,7 +281,7 @@ def run_episode_direct(task_id: str, client: OpenAI, dynamic_data: bool = False)
             raw_response = call_llm(client, messages)
         except Exception as e:
             log_step(step_num + 1, "llm_error", 0.0, True, str(e))
-            log_end(False, step_num, rewards)
+            log_end(False, step_num, 0.0, rewards)
             return {"task": task_id, "success": False, "score": 0.0, "steps": step_num}
 
         messages.append({"role": "assistant", "content": raw_response})
@@ -331,7 +331,7 @@ def run_episode_direct(task_id: str, client: OpenAI, dynamic_data: bool = False)
             obs, reward, done, info = env.step(action)
         except Exception as e:
             log_step(step_num + 1, action_str, 0.0, True, str(e))
-            log_end(False, step_num, rewards)
+            log_end(False, step_num, 0.0, rewards)
             return {"task": task_id, "success": False, "score": 0.0, "steps": step_num}
 
         error_msg = obs.last_action_error
@@ -344,7 +344,7 @@ def run_episode_direct(task_id: str, client: OpenAI, dynamic_data: bool = False)
             final_score = info["final_score"]
 
     success = final_score >= SUCCESS_THRESHOLD
-    log_end(success, step_num, rewards)
+    log_end(success, step_num, final_score, rewards)
 
     return {
         "task": task_id,
